@@ -1,18 +1,19 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class BoundingBox:
-    corners_2D: list()
-    corner_3D: list()
-
-    centers_2D: list()
-    centers_3D: list()
-
-    size_3D: list()
-    size_2D: list()
-
     label: str
     confidence_score: float
 
-    nuscenes_camera_tokens: list() 
-    nuscenes_sample_token: str
+    nuscenes_camera_token: str 
+
+    corners_2D: list[float] = field(default_factory=list)
+    corners_3D: list[float] = field(default_factory=list)
+
+    centers_2D: list[float] = field(default_factory=list)
+    centers_3D: list[float] = field(default_factory=list)
+
+    size_2D: list[float] = field(default_factory=list)
+    size_3D: list[float] = field(default_factory=list)
+
+    nuscenes_sample_token: str = field(default_factory=str)
