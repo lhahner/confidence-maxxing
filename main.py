@@ -242,8 +242,8 @@ def associate_detections(detection_3D_in_2D, detections_2D, threshold):
     matches = []
     for detection_2D in detections_2D:
         # TODO reconstruct as strategy pattern, different distance strategies
-        if detection_3D_in_2D.confidence_score == 0.05057337135076523 and detection_2D.confidence_score == 0.5404:
-            breakpoint()
+        #if detection_3D_in_2D.confidence_score == 0.05057337135076523 and detection_2D.confidence_score == 0.5404:
+         #   breakpoint()
         intersection = compute_iou_based_distance(detection_3D_in_2D.corners_2D, detection_2D.corners_2D)
         if intersection >= threshold and detection_2D.label == detection_3D_in_2D.label: 
             pair = (detection_2D, detection_3D_in_2D)
@@ -279,7 +279,7 @@ def maximise_confidence(detection_path_3D,
                         detection_path_2D,
                         version="v1.0-mini",
                         nuscenes_root=f"{DEFAULT_PROJECT_ROOT}/datasets/nuscenes-mini",
-                        association_strategy="iou-based") # Currently not really used
+                        association_strategy="iou-based"): # Currently not really used
     frames_3D = load_detections(path=detection_path_3D)
     nusc = NuScenes(version=str(version), dataroot=nuscenes_root, verbose=False)
     frames_3D_copy = frames_3D
