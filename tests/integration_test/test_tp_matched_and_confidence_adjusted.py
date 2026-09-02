@@ -46,7 +46,10 @@ class TestConfidenceMaxxing(unittest.TestCase):
 	    with open("./data/transfusion_test_sample.json", "r") as f:
 		data = json.load(f)
 	    score_before = find_TP_detections(data)["score"] 
-	    mutated_object = maximise_confidence(...) # TODO
-	    score_after = mutated_object["score"]
+	    mutated_object = maximise_confidence(detection_path_3D="./tests/data/transfusion_test_sample.json",
+                                                 version="v1.0-mini",
+                                                 detection_path_2D="./test/data/yolo_test_sample.json",
+                                                 association_strategy="iou-based")
+	    score_after = find_TP_detections(mutated_object)["score"]
 	    self.assertTrue(float(score_before) < float(score_after))
 	    

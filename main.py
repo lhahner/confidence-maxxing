@@ -25,16 +25,16 @@ CAMERAS = [
 	"CAM_BACK",
 	"CAM_BACK_RIGHT",
 	]
-CATEGORIES = ['barrier', 
-              'bicycle', 
-              'bus', 
-              'car', 
-              'construction_vehicle', 
-              'motorcycle', 
-              'pedestrian', 
-              'traffic_cone', 
-              'trailer', 
-              'truck']
+CATEGORIES = {1: 'barrier', 
+              2: 'bicycle', 
+              3: 'bus', 
+              4: 'car', 
+              5: 'construction_vehicle', 
+              6: 'motorcycle', 
+              7: 'pedestrian', 
+              8: 'traffic_cone', 
+              9: 'trailer', 
+              10: 'truck'}
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -46,12 +46,9 @@ def parse_args():
     parser.add_argument("--detection_path_2D", 
                         type=Path, 
                         default="./detections/predictions.json")
-    parser.add_argument("--iou-based",
-                        type=bool,
-                        default=True)
-    parser.add_argument("--center-based",
-                        type=bool,
-                        default=False)
+    parser.add_argument("--association_strategy",
+                        type=str,
+                        default="iou-based")
     return parser.parse_args()
 
 def load_detections(path):
@@ -130,13 +127,6 @@ def is_bounding_box_in_camera_frame(detection, nusc, camera_token, intrinsic, ca
             vis_level=BoxVisibility.ANY
     )
     return visible
-
-import numpy as np
-
-from nuscenes.utils.data_classes import Box
-from nuscenes.utils.geometry_utils import box_in_image, BoxVisibility
-from pyquaternion import Quaternion
-
 
 def detection_in_camera(nusc, frame, detection, camera_name):
     
@@ -252,12 +242,14 @@ def associate_detections(detection_3D_in_2D, detections_2D, threshold):
     matches = []
     for detection_2D in detections_2D:
         # TODO reconstruct as strategy pattern, different distance strategies
+        if detection_3D_in_2D.confidence_score == 0.05057337135076523 and detection_2D.confidence_score == 0.5404:
+            breakpoint()
         intersection = compute_iou_based_distance(detection_3D_in_2D.corners_2D, detection_2D.corners_2D)
         if intersection >= threshold and detection_2D.label == detection_3D_in_2D.label: 
             pair = (detection_2D, detection_3D_in_2D)
             matches.append(pair)
-    if detection_3D_in_2D.confidence_score == 0.05057337135076523:
-        breakpoint()
+    #if detection_3D_in_2D.confidence_score == 0.05057337135076523:
+    #    breakpoint()
     return matches
 
 def apply_nms(matches):
@@ -283,15 +275,13 @@ def apply_nms(matches):
     keep_indices = nms(boxes, scores, iou_threshold=0.8)
     return matches[keep_indices[0]]
 
-
-# TODO entrance point for libary import
-def maximise_confidence():
-    pass
-
-def main():
-    args = parse_args()
-    frames_3D = load_detections(path=args.detection_path_3D)
-    nusc = NuScenes(version=str(args.version), dataroot=args.nuscenes_root, verbose=False)
+def maximise_confidence(detection_path_3D, 
+                        detection_path_2D,
+                        version="v1.0-mini",
+                        nuscenes_root=f"{DEFAULT_PROJECT_ROOT}/datasets/nuscenes-mini",
+                        association_strategy="iou-based") # Currently not really used
+    frames_3D = load_detections(path=detection_path_3D)
+    nusc = NuScenes(version=str(version), dataroot=nuscenes_root, verbose=False)
     frames_3D_copy = frames_3D
     for frame_3D in frames_3D["frames"]:
         for camera_pose in CAMERAS: 
@@ -322,7 +312,7 @@ def main():
                 # Load all 2D Detections for that camera frame, 
                 # TODO loading all detections on every detection again makes no sense
                 detections_2D = [] 
-                for detection in load_detections(path=args.detection_path_2D):
+                for detection in load_detections(path=detection_path_2D):
                     camera_token = detection["image_id"]
                     sample_camera_token_based = nusc.get("sample_data", camera_token)["sample_token"] 
                     lidar_token_2D_based = nusc.get("sample", sample_camera_token_based)["data"]["LIDAR_TOP"]
@@ -357,13 +347,20 @@ def main():
                 # TODO clarify that this how to mutate this
                 new_detection_score: float
                 if matches[0][0].confidence_score >= 0.5:
-                    new_detection_score = detection_3D["score"] + matches[0][0].confidence_score
-            #        detection_3D["score"] = new_detection_score
-            #    updated_detections.append(detection_3D)
-            #frame_3D_copy["detections"] = updated_detections
+                    new_detection_score = (
+                        detection_3D["score"] + matches[0][0].confidence_score
+                    )
 
+                    detection_3D["score"] = new_detection_score
+                    detection_3D["bbox_3d"][7] = new_detection_score
+    return frames_3D
     #with open(OUTPUT_FILE, "w") as file:
     #    io.write(detections_3D, file)
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    maximise_confidence(detection_path_3D=args.detection_path_3D, 
+                        version=args.version, 
+                        nuscenes_root=args.nuscenes_root,
+                        association_strategy=args.association_strategy
+                        )
